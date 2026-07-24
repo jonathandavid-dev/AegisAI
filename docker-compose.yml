@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: aegis_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: aegis_secure_db_pass_2026
+      POSTGRES_DB: aegis_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aegis_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: aegis_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aegis_backend
+    restart: always
+    environment:
+      - APP_NAME=AegisAI – Enterprise Agentic Knowledge Platform
+      - APP_ENV=development
+      - DEBUG=true
+      - SECRET_KEY=94c1e48bc785536b3df58b548b2611681a95e0c5dbf5038c92f98f98a287a935
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=aegis_secure_db_pass_2026
+      - POSTGRES_DB=aegis_ai
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app/storage/uploads:/workspace/app/storage/uploads
+      - ./backend/app/storage/processed:/workspace/app/storage/processed
+      - ./backend/app/storage/chromadb:/workspace/app/storage/chromadb
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aegis_celery_worker
+    restart: always
+    command: celery -A app.workers.celery.celery_app worker --loglevel=info
+    environment:
+      - APP_NAME=AegisAI – Enterprise Agentic Knowledge Platform
+      - APP_ENV=development
+      - DEBUG=true
+      - SECRET_KEY=94c1e48bc785536b3df58b548b2611681a95e0c5dbf5038c92f98f98a287a935
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=aegis_secure_db_pass_2026
+      - POSTGRES_DB=aegis_ai
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./backend/app/storage/uploads:/workspace/app/storage/uploads
+      - ./backend/app/storage/processed:/workspace/app/storage/processed
+      - ./backend/app/storage/chromadb:/workspace/app/storage/chromadb
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aegis_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: aegis_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aegisai.com
+      PGADMIN_DEFAULT_PASSWORD: aegis_pgadmin_pass_2026
+    ports:
+      - "5050:80"
+    volumes:
+      - ./servers.json:/pgadmin4/servers.json
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
+    driver: local

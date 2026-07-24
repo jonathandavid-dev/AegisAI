@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "AegisAI PostgreSQL Core",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "aegis_ai",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "Password": "aegis_secure_db_pass_2026"
+    }
+  }
+}

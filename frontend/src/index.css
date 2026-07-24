@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-brand-background text-brand-text font-sans antialiased;
+    margin: 0;
+    padding: 0;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', 'Inter', sans-serif;
+  }
+}
+
+/* Glassmorphism custom components */
+.glass-panel {
+  @apply bg-brand-surface/40 backdrop-blur-md border border-brand-border/60;
+}
+
+.glass-card {
+  @apply bg-brand-surface/80 backdrop-blur-md border border-brand-border/80 rounded-xl p-6 shadow-xl transition-all duration-300;
+}
+
+.glass-input {
+  @apply bg-brand-background/50 border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-text placeholder-gray-500 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all duration-200;
+}
+
+.btn-primary {
+  @apply bg-brand-primary hover:bg-brand-primaryHover text-white px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2;
+}
+
+.btn-secondary {
+  @apply bg-transparent hover:bg-brand-surface border border-brand-border text-brand-text px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2;
+}

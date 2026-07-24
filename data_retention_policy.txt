@@ -1,0 +1,1 @@
+Ledgers, invoices, and accounting logs are scheduled for retention for 7 years prior to automated purging workflows.

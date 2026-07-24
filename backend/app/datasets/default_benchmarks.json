@@ -1,0 +1,32 @@
+[
+  {
+    "question": "What is the password complexity and length policy?",
+    "expected_answer": "Passwords must be at least 12 characters long and include alphanumeric characters.",
+    "expected_sources": ["security_handbook.pdf"],
+    "expected_documents": ["security_handbook.pdf"],
+    "expected_keywords": ["12 characters", "alphanumeric", "password", "complexity"],
+    "category": "Security",
+    "difficulty": "Easy",
+    "ground_truth": "Standard security handbook dictates that employee accounts must use passwords containing at least 12 characters, containing alphanumeric keys."
+  },
+  {
+    "question": "How are security incident escalation workflows managed?",
+    "expected_answer": "Security incidents must be reported to the security response team within 15 minutes of detection.",
+    "expected_sources": ["escalation_guide.docx"],
+    "expected_documents": ["escalation_guide.docx"],
+    "expected_keywords": ["escalation", "15 minutes", "security response team", "incident"],
+    "category": "Compliance",
+    "difficulty": "Medium",
+    "ground_truth": "All critical severity events require notification to the Security Operations Response Team within a 15-minute SLA."
+  },
+  {
+    "question": "What is the data retention policy for financial transaction records?",
+    "expected_answer": "Financial data and ledger records must be stored securely for a minimum duration of 7 years.",
+    "expected_sources": ["data_retention_policy.txt"],
+    "expected_documents": ["data_retention_policy.txt"],
+    "expected_keywords": ["7 years", "retention", "financial data", "records"],
+    "category": "Finance",
+    "difficulty": "Hard",
+    "ground_truth": "Ledgers, invoices, and accounting logs are scheduled for retention for 7 years prior to automated purging workflows."
+  }
+]
