@@ -10,7 +10,12 @@ from app.vectorstore.vector_service import VectorService
 logger = structlog.get_logger("aegis.indexing")
 
 class IndexingService:
-    """Orchestrates loading chunks, generating vector embeddings, and saving to ChromaDB."""
+    """Orchestrates loading chunks, generating vector embeddings, and saving to ChromaDB.
+    
+    Phase 3 upgrade: writes full rich metadata (section, heading, topic, keywords,
+    chunk_type, hierarchy_level) to ChromaDB alongside existing fields so that
+    the retrieval layer can expose them in search results and citations.
+    """
     
     @staticmethod
     async def index_document(document_id: int, batch_size: int = 32) -> None:
@@ -46,20 +51,28 @@ class IndexingService:
                     chunk.embedding_status = ChunkEmbeddingStatus.PROCESSING
                 await db.commit()
 
-                # 4. Generate embeddings
+                # 4. Generate document-side embeddings (with BGE document prefix)
                 texts = [chunk.content for chunk in chunks]
-                embeddings = EmbeddingService.embed_texts(texts, batch_size=batch_size)
+                embeddings = EmbeddingService.embed_documents(texts, batch_size=batch_size)
 
-                # 5. Populate Chroma schema inputs
+                # 5. Build Chroma metadata — include ALL rich fields for retrieval
                 ids = [f"doc_{document_id}_chunk_{chunk.chunk_index}" for chunk in chunks]
                 metadatas = [
                     {
+                        # Core identification
                         "document_id": document_id,
                         "filename": document.original_filename,
                         "page_number": chunk.page_number if chunk.page_number is not None else 1,
                         "chunk_index": chunk.chunk_index,
                         "checksum": document.checksum,
-                        "created_at": document.created_at.isoformat() if document.created_at else datetime.now(timezone.utc).isoformat()
+                        "created_at": document.created_at.isoformat() if document.created_at else datetime.now(timezone.utc).isoformat(),
+                        # Rich semantic metadata
+                        "section": chunk.section or "",
+                        "heading": chunk.heading or "",
+                        "topic": chunk.topic or "",
+                        "keywords": chunk.keywords or "",
+                        "hierarchy_level": chunk.hierarchy_level or 2,
+                        "chunk_type": chunk.chunk_type or "paragraph",
                     }
                     for chunk in chunks
                 ]
@@ -83,14 +96,15 @@ class IndexingService:
                 # Invalidate search cache for the workspace
                 from app.cache.retrieval_cache import RetrievalCache
                 await RetrievalCache.invalidate_workspace(document.workspace_id)
+                
+                # Invalidate BM25 index for the workspace so it gets rebuilt on next search
+                from app.retrieval.bm25_service import BM25Service
+                BM25Service.invalidate(document.workspace_id)
 
                 logger.info("Indexing Complete", document_id=document_id, count=len(chunks))
 
-
-
             except Exception as exc:
                 logger.error("Indexing Failed", document_id=document_id, error=str(exc))
-                # Set status to FAILED in database
                 try:
                     for chunk in chunks:
                         chunk.embedding_status = ChunkEmbeddingStatus.FAILED

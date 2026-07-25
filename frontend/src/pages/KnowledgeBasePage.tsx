@@ -4,6 +4,8 @@ import {
   Database, Upload, CheckCircle2, AlertCircle, 
   Trash2, Loader2, FileText, RefreshCw, Clock, Eye 
 } from 'lucide-react';
+import { Card, Button, Input, Progress, Skeleton, EmptyState, Badge } from '../components/ui/Primitives';
+import { useKnowledgeUniverse } from '../context/KnowledgeUniverseContext';
 
 interface Document {
   id: number;
@@ -17,9 +19,11 @@ interface Document {
   status: 'UPLOADED' | 'QUEUED' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
   created_at: string;
   updated_at: string;
+  chunks_count?: number;
 }
 
 export const KnowledgeBasePage: React.FC = () => {
+  const { triggerIngestSequence } = useKnowledgeUniverse();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -28,7 +32,7 @@ export const KnowledgeBasePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<any | null>(null);
 
   // Preview Modal state
   const [previewDocId, setPreviewDocId] = useState<number | null>(null);
@@ -201,6 +205,7 @@ export const KnowledgeBasePage: React.FC = () => {
         }
       });
       setSuccess(`File "${file.name}" uploaded successfully. Celery pipeline started.`);
+      triggerIngestSequence(file.name);
       setFile(null);
       await fetchDocuments(false);
       
@@ -260,125 +265,100 @@ export const KnowledgeBasePage: React.FC = () => {
   const getStatusBadge = (status: Document['status']) => {
     switch (status) {
       case 'UPLOADED':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-800 text-gray-400 border border-gray-700">
-            <Clock className="w-3 h-3" /> Uploaded
-          </span>
-        );
+        return <Badge variant="secondary"><Clock className="w-3 h-3 inline mr-1" /> Uploaded</Badge>;
       case 'QUEUED':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-950/40 text-yellow-500 border border-yellow-800/30">
-            <Clock className="w-3 h-3 animate-pulse" /> Queued
-          </span>
-        );
+        return <Badge variant="warning"><Clock className="w-3 h-3 inline mr-1 animate-pulse" /> Queued</Badge>;
       case 'PROCESSING':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-950/50 text-blue-400 border border-blue-800/40">
-            <Loader2 className="w-3 h-3 animate-spin" /> Processing
-          </span>
-        );
+        return <Badge variant="primary"><Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> Processing</Badge>;
       case 'PROCESSED':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-950/50 text-green-400 border border-green-800/40">
-            <CheckCircle2 className="w-3 h-3" /> Ready
-          </span>
-        );
+        return <Badge variant="success"><CheckCircle2 className="w-3 h-3 inline mr-1" /> Ready</Badge>;
       case 'FAILED':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-950/50 text-red-400 border border-red-800/40">
-            <AlertCircle className="w-3 h-3" /> Failed
-          </span>
-        );
+        return <Badge variant="danger"><AlertCircle className="w-3 h-3 inline mr-1" /> Failed</Badge>;
     }
   };
 
   const renderVectorIndexStatus = (doc: Document) => {
     if (doc.status !== 'PROCESSED') {
-      return <span className="text-gray-500 font-mono text-xs">-</span>;
+      return <span className="text-brand-textMuted font-mono text-xs">-</span>;
     }
     
     const emb = embeddingStatuses[doc.id];
     if (!emb) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 font-mono">
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-primary" /> Loading...
+        <span className="inline-flex items-center gap-1 text-[11px] text-brand-textMuted font-mono">
+          <Loader2 className="w-3 h-3 animate-spin text-brand-primary" /> Loading...
         </span>
       );
     }
     
     switch (emb.status) {
       case 'PENDING':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] uppercase font-semibold font-mono bg-gray-900 text-gray-400 border border-gray-800">
-            Pending
-          </span>
-        );
+        return <Badge variant="secondary">Pending</Badge>;
       case 'PROCESSING':
         const pct = emb.total_chunks > 0 ? Math.round((emb.indexed_chunks / emb.total_chunks) * 100) : 0;
         return (
           <div className="space-y-1 min-w-[100px]">
-            <div className="flex justify-between text-[10px] font-mono text-blue-400">
+            <div className="flex justify-between text-[10px] font-mono text-brand-primary">
               <span className="flex items-center gap-1"><Loader2 className="w-2.5 h-2.5 animate-spin" /> Indexing</span>
               <span>{pct}%</span>
             </div>
-            <div className="w-full bg-brand-background rounded-full h-1 overflow-hidden border border-brand-border/40">
-              <div className="bg-blue-500 h-1 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
-            </div>
+            <Progress value={pct} />
           </div>
         );
       case 'INDEXED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] uppercase font-semibold font-mono bg-green-950/40 text-green-400 border border-green-800/30">
-            {emb.indexed_chunks}/{emb.total_chunks} Ready
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] uppercase font-semibold font-mono bg-green-500/10 text-green-400 border border-green-500/20">
+            {emb.indexed_chunks}/{emb.total_chunks} Indexed
           </span>
         );
       case 'FAILED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] uppercase font-semibold font-mono bg-red-950/40 text-red-400 border border-red-800/30">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] uppercase font-semibold font-mono bg-red-500/10 text-red-400 border border-red-500/20">
             Failed ({emb.failed_chunks} err)
           </span>
         );
       default:
-        return <span className="text-gray-500 font-mono text-xs">-</span>;
+        return <span className="text-brand-textMuted font-mono text-xs">-</span>;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto select-none animate-fade-in-up">
       {/* Header section */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-brand-border/40 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary">
-            <Database className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shadow-[0_0_15px_rgba(16,185,129,0.12)]">
+            <Database className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Knowledge Base</h1>
-            <p className="text-sm text-gray-400">Ingest, view, and manage corporate document assets securely.</p>
+            <h1 className="text-2xl font-extrabold text-white">Knowledge Library</h1>
+            <p className="text-xs text-brand-textSecondary">Ingest, view, and manage corporate document assets securely.</p>
           </div>
         </div>
-        <button 
+        <Button 
+          variant="secondary" 
+          size="sm"
           onClick={() => fetchDocuments(true)} 
           disabled={loadingList}
-          className="btn-secondary px-3.5 py-2 flex items-center gap-1.5 text-xs focus:outline-none"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loadingList ? 'animate-spin' : ''}`} /> Sync List
-        </button>
+          <RefreshCw className={`w-3.5 h-3.5 ${loadingList ? 'animate-spin' : ''}`} /> Sync Library
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Upload Panel */}
-        <div className="lg:col-span-1 glass-card self-start">
-          <h2 className="text-base font-semibold text-white mb-4">Ingest Document</h2>
+        <Card className="lg:col-span-1 self-start p-6" glow>
+          <h2 className="text-xs font-bold text-white uppercase tracking-wider mb-4 font-mono">Ingest Vector Core</h2>
           
           {error && (
-            <div className="mb-4 p-4 rounded-lg bg-red-950/40 border border-red-800/40 text-red-300 text-xs flex items-start gap-2.5">
+            <div className="p-4 rounded-xl bg-red-950/20 border border-red-800/30 text-red-400 text-xs flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
               <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="mb-4 p-4 rounded-lg bg-green-950/40 border border-green-800/40 text-green-300 text-xs flex items-start gap-2.5">
+            <div className="p-4 rounded-xl bg-green-950/20 border border-green-800/30 text-green-400 text-xs flex items-start gap-2.5">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-green-400" />
               <span>{success}</span>
             </div>
@@ -390,9 +370,9 @@ export const KnowledgeBasePage: React.FC = () => {
               onDragOver={handleDrag}
               onDragLeave={handleDrag}
               onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all relative ${
+              className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative ${
                 dragActive 
-                  ? 'border-brand-primary bg-brand-primary/5' 
+                  ? 'border-brand-primary bg-brand-primary/10' 
                   : 'border-brand-border/60 hover:border-brand-primary/50 bg-brand-background/15'
               }`}
             >
@@ -403,121 +383,133 @@ export const KnowledgeBasePage: React.FC = () => {
                 accept=".pdf,.docx,.txt"
                 className="absolute inset-0 opacity-0 cursor-pointer" 
               />
-              <Upload className="w-8 h-8 text-gray-400 mb-2.5" />
+              <Upload className="w-8 h-8 text-brand-textMuted mb-2.5" />
               {file ? (
                 <div className="text-center truncate w-full px-2">
-                  <span className="text-xs font-semibold text-white block truncate">{file.name}</span>
-                  <span className="text-[10px] text-gray-400">{formatSize(file.size)}</span>
+                  <span className="text-xs font-bold text-white block truncate">{file.name}</span>
+                  <span className="text-[10px] text-brand-textMuted font-mono">{formatSize(file.size)}</span>
                 </div>
               ) : (
                 <div className="text-center">
-                  <span className="text-xs font-medium text-brand-text block">Click or Drag document here</span>
-                  <span className="text-[10px] text-gray-500 mt-1 block">PDF, DOCX, or TXT up to 25MB</span>
+                  <span className="text-xs font-bold text-brand-text block">Click or Drag document here</span>
+                  <span className="text-[9px] text-brand-textMuted mt-1 block">PDF, DOCX, or TXT up to 25MB</span>
                 </div>
               )}
             </div>
 
             {uploading && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[10px] text-gray-400">
-                  <span>Uploading to gateway...</span>
+              <div className="space-y-1.5 font-mono">
+                <div className="flex justify-between text-[10px] text-brand-textMuted">
+                  <span>Uploading to core...</span>
                   <span>{uploadProgress}%</span>
                 </div>
-                <div className="w-full bg-brand-background rounded-full h-1.5 overflow-hidden">
-                  <div 
-                    className="bg-brand-primary h-1.5 rounded-full transition-all duration-100" 
-                    style={{ width: `${uploadProgress}%` }}
-                  />
+                <Progress value={uploadProgress} />
+                
+                {/* Volumetric green streaming upload indicator */}
+                <div className="w-full flex items-center justify-center py-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-ping" />
                 </div>
               </div>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={uploading || !file}
-              className="btn-primary w-full disabled:opacity-50 text-xs"
+              className="w-full text-xs font-bold"
             >
               {uploading ? 'Processing File Ingestion...' : 'Upload & Process'}
-            </button>
+            </Button>
           </form>
-        </div>
+        </Card>
 
-        {/* Documents Table */}
-        <div className="lg:col-span-2 glass-card">
-          <h2 className="text-base font-semibold text-white mb-4">Document Repository</h2>
+        {/* Documents Gallery Card List */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex justify-between items-center border-b border-brand-border/40 pb-2 mb-2 select-none">
+            <h2 className="text-[10px] font-bold text-brand-textMuted uppercase tracking-wider font-mono">Document Repository</h2>
+            <span className="text-[9px] text-brand-textMuted font-mono uppercase font-bold">{documents.length} Assets Ingested</span>
+          </div>
 
           {loadingList ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
-              <span className="text-xs text-gray-400 font-mono uppercase tracking-wider">Hydrating repository list...</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-32 w-full" />
+              ))}
             </div>
           ) : documents.length === 0 ? (
-            <div className="text-center py-16 border border-brand-border/40 border-dashed rounded-xl bg-brand-background/5">
-              <FileText className="w-12 h-12 text-gray-500 mx-auto mb-3" />
-              <span className="text-sm font-semibold text-white block">No documents uploaded yet</span>
-              <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
-                Ingest your first TXT, PDF, or DOCX document using the panel to trigger active vector index pipelines.
-              </p>
-            </div>
+            <EmptyState
+              title="No documents uploaded yet"
+              description="Ingest your first TXT, PDF, or DOCX document using the panel to trigger active vector index pipelines."
+              icon={FileText}
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-brand-border text-[11px] uppercase tracking-wider text-gray-400 font-mono bg-brand-background/20">
-                    <th className="py-3 px-4 font-semibold">Filename</th>
-                    <th className="py-3 px-4 font-semibold">Type</th>
-                    <th className="py-3 px-4 font-semibold">Size</th>
-                    <th className="py-3 px-4 font-semibold">Chunks</th>
-                    <th className="py-3 px-4 font-semibold">Vector Index</th>
-                    <th className="py-3 px-4 font-semibold">Status</th>
-                    <th className="py-3 px-4 font-semibold text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-brand-border/40 text-sm">
-                  {documents.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-brand-surface/20 transition-colors">
-                      <td className="py-3.5 px-4 font-medium text-white truncate max-w-xs" title={doc.original_filename}>
-                        {doc.original_filename}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="font-mono text-xs uppercase bg-brand-background px-1.5 py-0.5 rounded text-gray-300 border border-brand-border/40">
-                          {doc.file_extension}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {documents.map((doc) => (
+                <Card 
+                  key={doc.id}
+                  className="bg-brand-surface/40 hover:bg-brand-surface/80 border border-brand-border/40 hover:border-brand-primary/40 p-5 rounded-2xl flex flex-col justify-between h-40 transition-all duration-300 relative group overflow-hidden"
+                  glow
+                >
+                  {/* Volumetric glow on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-brand-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                  {/* Header Card details */}
+                  <div className="flex justify-between items-start min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`p-2 rounded-xl bg-brand-background border border-brand-border/40 shrink-0 ${
+                        doc.file_extension === 'pdf' ? 'text-red-400' :
+                        doc.file_extension === 'docx' ? 'text-blue-400' : 'text-brand-accent'
+                      }`}>
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="truncate">
+                        <span className="text-xs font-bold text-white block truncate" title={doc.original_filename}>
+                          {doc.original_filename}
                         </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-gray-300 font-mono text-xs">
-                        {formatSize(doc.file_size)}
-                      </td>
-                      <td className="py-3.5 px-4 text-gray-300 font-mono text-xs">
-                        {doc.status === 'PROCESSED' ? doc.chunks_count : '-'}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {renderVectorIndexStatus(doc)}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {getStatusBadge(doc.status)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right space-x-2">
-                        {doc.status === 'PROCESSED' && (
-                          <button
-                            onClick={() => handlePreview(doc.id)}
-                            className="text-gray-400 hover:text-brand-primary p-1.5 rounded-lg hover:bg-brand-primary/10 transition-colors inline-flex"
-                            title="Preview Extracted Text"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        )}
+                        <span className="text-[9px] text-brand-textMuted font-mono uppercase tracking-wider block mt-0.5">
+                          {doc.file_extension} • {formatSize(doc.file_size)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Indicator Details */}
+                  <div className="space-y-2 py-2">
+                    <div className="flex justify-between items-center text-[10px] font-mono">
+                      <span className="text-brand-textMuted">PIPELINE:</span>
+                      <span>{getStatusBadge(doc.status)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-mono">
+                      <span className="text-brand-textMuted">VECTOR CORE:</span>
+                      <span>{renderVectorIndexStatus(doc)}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions footer hover strip */}
+                  <div className="border-t border-brand-border/40 pt-2 flex justify-between items-center relative z-10">
+                    <span className="text-[8px] text-brand-textMuted font-mono uppercase tracking-wider">
+                      Chunks: {doc.status === 'PROCESSED' ? (doc.chunks_count || '-') : '-'}
+                    </span>
+                    <div className="flex gap-2">
+                      {doc.status === 'PROCESSED' && (
                         <button
-                          onClick={() => handleDelete(doc.id, doc.original_filename)}
-                          className="text-gray-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-950/20 transition-colors inline-flex"
-                          title="Delete Document"
+                          onClick={() => handlePreview(doc.id)}
+                          className="text-brand-textMuted hover:text-brand-primary p-1 rounded hover:bg-white/5 transition-colors cursor-pointer"
+                          title="Preview Extracted Text"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5" />
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                      <button
+                        onClick={() => handleDelete(doc.id, doc.original_filename)}
+                        className="text-brand-textMuted hover:text-red-400 p-1 rounded hover:bg-white/5 transition-colors cursor-pointer"
+                        title="Delete Document"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
         </div>
@@ -525,22 +517,22 @@ export const KnowledgeBasePage: React.FC = () => {
 
       {/* Document Preview Modal */}
       {previewDocId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="glass-card w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden border border-brand-border shadow-2xl relative animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-scale-up">
+          <Card className="w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden border border-brand-primary/30 p-0 shadow-2xl relative">
             {/* Modal Header */}
             <div className="p-5 border-b border-brand-border flex items-center justify-between bg-brand-surface/30">
               <div className="flex items-center gap-2.5">
-                <FileText className="w-5 h-5 text-brand-primary" />
+                <FileText className="w-5 h-5 text-brand-primary animate-pulse" />
                 <div>
-                  <h3 className="text-base font-bold text-white">Document Preview</h3>
-                  <p className="text-xs text-gray-400 font-mono mt-0.5 truncate max-w-md">
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Document Preview</h3>
+                  <p className="text-[10px] text-brand-textMuted font-mono mt-0.5 truncate max-w-md">
                     {previewData?.filename || 'Loading file details...'}
                   </p>
                 </div>
               </div>
               <button 
                 onClick={() => setPreviewDocId(null)}
-                className="text-gray-400 hover:text-white p-1 hover:bg-brand-surface rounded-lg transition-colors text-xs font-mono"
+                className="text-brand-textMuted hover:text-white p-1 hover:bg-brand-surface rounded-lg transition-colors text-xs font-mono cursor-pointer"
               >
                 CLOSE
               </button>
@@ -551,7 +543,7 @@ export const KnowledgeBasePage: React.FC = () => {
               {loadingPreview ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                   <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
-                  <span className="text-xs text-gray-400 font-mono uppercase tracking-wider">Retrieving text segments...</span>
+                  <span className="text-xs text-brand-textMuted font-mono uppercase tracking-wider">Retrieving text segments...</span>
                 </div>
               ) : previewError ? (
                 <div className="p-4 rounded-xl border border-red-800/40 bg-red-950/20 text-red-400 text-xs flex items-center gap-2">
@@ -561,30 +553,30 @@ export const KnowledgeBasePage: React.FC = () => {
               ) : previewData ? (
                 <div className="space-y-4">
                   {/* Stats Bar */}
-                  <div className="grid grid-cols-3 gap-4 p-3.5 bg-brand-surface/40 border border-brand-border/40 rounded-xl font-mono text-xs">
+                  <div className="grid grid-cols-3 gap-4 p-3.5 bg-[#111827]/40 border border-brand-border/40 rounded-xl font-mono text-[10px]">
                     <div className="text-center">
-                      <span className="text-gray-400 block text-[10px] uppercase tracking-wider mb-0.5">Format</span>
-                      <span className="text-white font-semibold">
+                      <span className="text-brand-textMuted block uppercase tracking-wider mb-0.5">Format</span>
+                      <span className="text-white font-bold">
                         {previewData.filename.split('.').pop()?.toUpperCase() || '-'}
                       </span>
                     </div>
                     <div className="text-center border-x border-brand-border/40">
-                      <span className="text-gray-400 block text-[10px] uppercase tracking-wider mb-0.5">Pages</span>
-                      <span className="text-white font-semibold">{previewData.page_count ?? 1}</span>
+                      <span className="text-brand-textMuted block uppercase tracking-wider mb-0.5">Pages</span>
+                      <span className="text-white font-bold">{previewData.page_count ?? 1}</span>
                     </div>
                     <div className="text-center">
-                      <span className="text-gray-400 block text-[10px] uppercase tracking-wider mb-0.5">Total Chunks</span>
-                      <span className="text-white font-semibold">{previewData.total_chunks}</span>
+                      <span className="text-brand-textMuted block uppercase tracking-wider mb-0.5">Total Chunks</span>
+                      <span className="text-white font-bold">{previewData.total_chunks}</span>
                     </div>
                   </div>
                   
                   {/* Extracted Text Box */}
                   <div className="space-y-2">
-                    <span className="text-xs font-semibold text-gray-300 block uppercase tracking-wider">Preview Content (First Chunk snippet)</span>
-                    <div className="p-4 rounded-xl border border-brand-border bg-brand-background font-mono text-xs text-gray-300 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto select-text scrollbar-thin">
+                    <span className="text-xs font-bold text-gray-300 block uppercase tracking-wider">Preview Content (First Chunk snippet)</span>
+                    <div className="p-4 rounded-xl border border-brand-border bg-brand-background font-mono text-[11px] text-gray-300 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto select-text scrollbar-thin">
                       {previewData.preview_content}
                     </div>
-                    <span className="text-[10px] text-gray-500 block">
+                    <span className="text-[9px] text-brand-textMuted block">
                       * Text contents above reflect the cleaned text segment stored in the primary chunk container. Chunking size: 1000 chars, Overlap: 200 chars.
                     </span>
                   </div>
@@ -594,14 +586,15 @@ export const KnowledgeBasePage: React.FC = () => {
             
             {/* Modal Footer */}
             <div className="p-4 border-t border-brand-border bg-brand-surface/30 flex justify-end">
-              <button 
+              <Button 
+                variant="secondary"
+                size="sm"
                 onClick={() => setPreviewDocId(null)}
-                className="btn-secondary px-5 py-2 text-xs"
               >
                 Close Preview
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

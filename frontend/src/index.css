@@ -7,30 +7,155 @@
     @apply bg-brand-background text-brand-text font-sans antialiased;
     margin: 0;
     padding: 0;
+    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', 'Inter', sans-serif;
+    font-family: 'Geist', 'Inter', sans-serif;
+  }
+
+  /* Custom dark premium scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(16, 185, 129, 0.2);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(16, 185, 129, 0.4);
+  }
+
+  /* Custom text selection styling */
+  ::selection {
+    background: rgba(52, 211, 153, 0.2);
+    color: #ffffff;
   }
 }
 
-/* Glassmorphism custom components */
+/* Glassmorphism Design Primitives */
 .glass-panel {
-  @apply bg-brand-surface/40 backdrop-blur-md border border-brand-border/60;
+  @apply bg-brand-surface/40 backdrop-blur-md border border-brand-border/40;
 }
 
 .glass-card {
-  @apply bg-brand-surface/80 backdrop-blur-md border border-brand-border/80 rounded-xl p-6 shadow-xl transition-all duration-300;
+  @apply bg-brand-surface/60 backdrop-blur-lg border border-brand-border/60 rounded-2xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] transition-all duration-300 hover:border-brand-primary/30 hover:shadow-[0_8px_32px_0_rgba(16,185,129,0.04)];
 }
 
 .glass-input {
-  @apply bg-brand-background/50 border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-text placeholder-gray-500 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all duration-200;
+  @apply bg-brand-background/40 border border-brand-border rounded-xl px-4 py-3 text-sm text-brand-text placeholder-brand-textMuted focus:outline-none focus:border-brand-primary/80 focus:ring-1 focus:ring-brand-primary/40 transition-all duration-200;
 }
 
 .btn-primary {
-  @apply bg-brand-primary hover:bg-brand-primaryHover text-white px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2;
+  @apply bg-gradient-to-r from-brand-primary to-brand-primaryHover text-white px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:opacity-95 hover:shadow-[0_0_20px_0_rgba(16,185,129,0.2)] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer;
 }
 
 .btn-secondary {
-  @apply bg-transparent hover:bg-brand-surface border border-brand-border text-brand-text px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2;
+  @apply bg-[#0D0E11]/40 hover:bg-[#0D0E11]/80 border border-brand-border text-brand-text px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer;
 }
+
+/* Cinematic Background Gradients & Layers */
+.aurora-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 10%, #061A11 0%, #000000 70%);
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.12;
+}
+
+.aurora-blob-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #059669 0%, transparent 80%);
+  top: -10%;
+  left: 10%;
+}
+
+.aurora-blob-2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #10b981 0%, transparent 80%);
+  bottom: 10%;
+  right: 15%;
+}
+
+.aurora-blob-3 {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, #064e3b 0%, transparent 80%);
+  top: 40%;
+  left: 45%;
+}
+
+/* Cybernetic Dot Grid Background */
+.grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(rgba(16, 185, 129, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Premium Typography glows */
+.text-glow-primary {
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.text-glow-accent {
+  text-shadow: 0 0 12px rgba(52, 211, 153, 0.3);
+}
+
+/* Shimmer Loading animation block */
+.shimmer-loading {
+  background: linear-gradient(90deg, #050505 25%, #0d120e 50%, #050505 75%);
+  background-size: 200% 100%;
+}
+
+/* Code Highlights and markdown styles inside Chat messages */
+.prose-custom {
+  @apply text-brand-text leading-relaxed;
+}
+
+.prose-custom p {
+  @apply mb-3 text-sm text-[#E5E7EB];
+}
+
+.prose-custom ul, .prose-custom ol {
+  @apply ml-5 mb-3 list-disc text-sm text-[#D1D5DB] space-y-1;
+}
+
+.prose-custom li {
+  @apply pl-1;
+}
+
+.prose-custom code {
+  @apply px-1.5 py-0.5 rounded bg-brand-surface text-brand-accent font-mono text-xs border border-brand-border/40;
+}
+
+.prose-custom pre {
+  @apply p-4 rounded-xl bg-brand-background border border-brand-border/60 font-mono text-xs text-gray-200 overflow-x-auto my-3 relative shadow-inner;
+}
+
+.prose-custom blockquote {
+  @apply pl-4 border-l-2 border-brand-primary text-brand-textSecondary text-xs italic my-3;
+}
+

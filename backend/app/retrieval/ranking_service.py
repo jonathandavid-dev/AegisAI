@@ -1,15 +1,23 @@
 from typing import List, Dict, Any
 
 class RankingService:
-    """Service responsible for sorting, threshold-filtering, and formatting search results."""
+    """Service responsible for sorting, threshold-filtering, and formatting ChromaDB search results.
+    
+    Phase 11 upgrade: now extracts full rich metadata fields (section, heading,
+    keywords, chunk_type, hierarchy_level) from Chroma results and passes them
+    through to the hybrid retrieval pipeline.
+    """
     
     @staticmethod
     def rank_results(
         chroma_results: Dict[str, Any], 
-        similarity_threshold: float = 0.50, 
-        top_k: int = 10
+        similarity_threshold: float = 0.30,   # Lowered — reranker acts as quality gate
+        top_k: int = 20
     ) -> List[Dict[str, Any]]:
-        """Transforms distance metrics into similarity scores and drops records below threshold."""
+        """
+        Transforms ChromaDB distance metrics into similarity scores,
+        drops records below threshold, and extracts all metadata fields.
+        """
         ranked_items = []
         
         # Extract Chroma nested lists
@@ -39,7 +47,15 @@ class RankingService:
                 "page_number": int(metadata.get("page_number", 1)),
                 "chunk_index": int(metadata.get("chunk_index", 0)),
                 "score": score,
-                "content": documents[idx] or ""
+                "content": documents[idx] or "",
+                # Rich metadata from Phase 2/3
+                "section": metadata.get("section", ""),
+                "heading": metadata.get("heading", ""),
+                "topic": metadata.get("topic", ""),
+                "keywords": metadata.get("keywords", ""),
+                "chunk_type": metadata.get("chunk_type", "paragraph"),
+                "hierarchy_level": int(metadata.get("hierarchy_level", 2)),
+                "retrieval_source": "vector"
             }
             
             ranked_items.append(item)

@@ -19,29 +19,42 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 border-r border-brand-border/60 bg-[#0B0F19] p-4 flex flex-col h-[calc(100vh-4rem)] sticky left-0 z-30">
-      <nav className="flex-1 space-y-1">
+    <aside className="w-64 border-r border-brand-border/40 bg-brand-background/40 backdrop-blur-md p-4 flex flex-col h-[calc(100vh-4rem)] sticky left-0 z-30 justify-between">
+      <nav className="space-y-1.5 flex-1">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+              `flex items-center gap-3.5 px-4.5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group relative overflow-hidden border ${
                 isActive
-                  ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20'
-                  : 'text-gray-400 hover:text-brand-text hover:bg-brand-surface/65'
+                  ? 'bg-gradient-to-r from-brand-primary/15 to-brand-accent/5 border-brand-primary/40 text-white shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                  : 'border-transparent text-brand-textSecondary hover:text-white hover:bg-brand-surface/30 hover:border-brand-border/40'
               }`
             }
           >
-            <item.icon className="w-5 h-5" />
-            <span>{item.name}</span>
+            {({ isActive }) => (
+              <>
+                {/* Visual active indicator border strip */}
+                {isActive && (
+                  <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-brand-accent" />
+                )}
+                <item.icon className={`w-4.5 h-4.5 transition-transform duration-200 group-hover:scale-105 ${
+                  isActive ? 'text-brand-accent' : 'text-brand-textMuted group-hover:text-brand-textSecondary'
+                }`} />
+                <span>{item.name}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="border-t border-brand-border/40 pt-4 text-center">
-        <span className="text-[10px] text-gray-500 font-mono tracking-widest uppercase">
-          Aegis Platform v1.0
+      <div className="border-t border-brand-border/30 pt-4 px-2 flex flex-col gap-1 select-none">
+        <span className="text-[9px] text-brand-textMuted font-mono tracking-widest uppercase block">
+          Aegis Platform v3.0
+        </span>
+        <span className="text-[8px] text-[#4B5563] font-mono block">
+          Enterprise Intelligence OS
         </span>
       </div>
     </aside>

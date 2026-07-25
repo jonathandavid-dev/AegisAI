@@ -63,23 +63,28 @@ class ChatService:
                 if exec_details["status"] == "success":
                     tool_context = f"[Tool Context Output: {exec_details['tool_used']}]\n{exec_details['serialized']}"
             
-            # 4. SearchService Retrieval
-            logger.info("Search Started")
+            # 4. SearchService Retrieval (hybrid: vector + BM25 + reranking)
+            logger.info("Hybrid Search Started")
             start_ret = time.perf_counter()
             intent = orch_res["intent"]
             candidate_chunks = []
+            retrieval_diagnostics = {}
             
             # Execute retrieval only if the intent calls for retrieval, hybrid, or if no tool succeeded
             if intent in ["RETRIEVAL", "HYBRID"] or not tool_execution:
                 search_res = await SearchService.search(
                     query=rewritten_query, 
                     top_k=top_k, 
-                    similarity_threshold=0.50,
-                    workspace_id=workspace_id
+                    similarity_threshold=0.30,   # Reranker acts as quality gate
+                    workspace_id=workspace_id,
+                    use_query_expansion=True,
+                    use_reranking=True,
+                    candidates_k=20
                 )
                 candidate_chunks = search_res.get("results", [])
+                retrieval_diagnostics = search_res.get("diagnostics", {})
             ret_duration = (time.perf_counter() - start_ret) * 1000.0
-            logger.info("Search Completed", duration_ms=ret_duration, chunks_found=len(candidate_chunks))
+            logger.info("Hybrid Search Completed", duration_ms=ret_duration, chunks_found=len(candidate_chunks))
             
             # 5. Context Builder
             context_str, selected_chunks = ContextBuilder.build_context(candidate_chunks, max_chunks=top_k)
@@ -118,7 +123,14 @@ class ChatService:
                 "answer": answer,
                 "citations": citations,
                 "retrieval": {
-                    "chunks_used": len(selected_chunks)
+                    "chunks_used": len(selected_chunks),
+                    "query_variants": retrieval_diagnostics.get("query_variants", [rewritten_query]),
+                    "candidates_before_rerank": retrieval_diagnostics.get("candidates_before_rerank", 0),
+                    "candidates_after_rerank": retrieval_diagnostics.get("candidates_after_rerank", len(selected_chunks)),
+                    "embed_time_ms": retrieval_diagnostics.get("embed_time_ms", 0),
+                    "vector_search_time_ms": retrieval_diagnostics.get("vector_search_time_ms", 0),
+                    "bm25_time_ms": retrieval_diagnostics.get("bm25_time_ms", 0),
+                    "rerank_time_ms": retrieval_diagnostics.get("rerank_time_ms", 0),
                 },
                 "memory": {
                     "summary_used": summary is not None,

@@ -15,6 +15,7 @@ class DocumentChunk(Base):
     """
     DocumentChunk model representing semantic parts of an ingested document.
     Maintains relationships with parent Document and tracks embedding status.
+    Rich metadata fields enable enterprise-grade RAG citations and filtering.
     """
     __tablename__ = "document_chunks"
     
@@ -28,6 +29,14 @@ class DocumentChunk(Base):
     page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     character_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    # Rich semantic metadata — populated by SemanticChunker
+    section: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    heading: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    keywords: Mapped[str | None] = mapped_column(Text, nullable=True)   # comma-separated
+    hierarchy_level: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0=doc, 1=section, 2=sub
+    chunk_type: Mapped[str | None] = mapped_column(String(50), nullable=True, default="paragraph")
     
     embedding_status: Mapped[ChunkEmbeddingStatus] = mapped_column(
         Enum(ChunkEmbeddingStatus, name="chunk_embedding_status_enum"),
